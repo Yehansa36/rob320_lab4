@@ -101,6 +101,14 @@ void matrix_multiply_task(const std::vector<float>& A_i,
     //       and store the result in row i of the result matrix
     //       Hint: Reuse the code from the multiply_fast function to 
     //             write the loop that calculates the result matrix row
+    for (size_t i = 0; i < common; i++) {
+        float Aik = A_i[i];
+        const std::vector<float> &B_k = B[i];
+        for(size_t j = 0; j < cols; j++) {
+            result_i[j] += Aik *B_k[j];
+        }
+    }
+
 }
 
 Matrix multiply_threads(const Matrix &A, const Matrix &B) {
@@ -124,6 +132,14 @@ Matrix multiply_threads(const Matrix &A, const Matrix &B) {
     //             loop that creates the threads
 
     // TODO: Join all threads
+    for (size_t i = 0; i < rows; i++) {
+        threads[i] = std::thread(matrix_multiply_task, std::cref(A[i]), std::cref(B), std::ref(result[i]), common, cols);
+
+    }
+
+    for (size_t i = 0; i < rows; i++) {
+        threads[i].join();
+    }
 
     return result;
 }
@@ -149,6 +165,10 @@ Matrix multiply_thread_pool(const Matrix &A, const Matrix &B) {
     //       threads in the pool.
 
     // The destructor of the ThreadPool class will wait for all tasks to finish
+    for (size_t i = 0; i < rows; i++) {
+        pool.enqueue(matrix_multiply_task, std::cref(A[i]), std::cref(B), std::ref(result[i]), common, cols);
+
+    }
     return result;
 }
 
