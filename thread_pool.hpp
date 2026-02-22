@@ -39,11 +39,13 @@ ThreadPool::ThreadPool(size_t num_threads) : stop(false) {
 ThreadPool::~ThreadPool() {
     // TODO: Lock the queue_mutex, set the stop flag to true, and unlock the 
     //       mutex.
-    std::unique_lock<std::mutex> ul(queue_mutex);
-    stop = true;
-    // TODO: Notify all worker threads to wake up.
-    condition.notify_all();
-    // Hint: Use the condition variable to notify all threads.
+    {
+        std::unique_lock<std::mutex> ul(queue_mutex);
+        stop = true;
+    }  // lock released here
+    
+    condition.notify_all();  // notify AFTER releasing lock
+    
     for (std::thread& w : workers) {
         w.join();
     }
@@ -53,14 +55,16 @@ ThreadPool::~ThreadPool() {
 template<typename Func, typename... Args>
 void ThreadPool::enqueue(Func func, Args... args) {
     // TODO: Lock the queue_mutex
-    std::unique_lock<std::mutex> ul(queue_mutex);
-
+    {
+        std::unique_lock<std::mutex> ul(queue_mutex);
+        tasks.emplace(std::bind(func, args...));
+    }
     // The tasks vector expects a std::function<void()> object. This is
     // a function with no arguments. Our function may have arguments, so
     // we must bind the function and arguments together in order to "cast"
     // it to a std::function<void()> object.
     // For more info on std::bind, see: https://en.cppreference.com/w/cpp/utility/functional/bind
-    tasks.emplace(std::bind(func, args...));
+   // tasks.emplace(std::bind(func, args...));
 
     // TODO: Unlock the queue_mutex
     condition.notify_one();
