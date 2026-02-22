@@ -37,26 +37,24 @@ void path_planner_worker_thread(PathPlanner &path_planner,
                                 std::mutex &mutex,
                                 std::counting_semaphore<255> &sem) {
                                     
+    //std::cerr << "Worker started" << std::endl;
+    
     std::vector<Node> path = path_planner.find_path(start_x, start_y, goal_x, goal_y);
+    
+    //std::cerr << "Path found, size: " << path.size() << std::endl;
 
-    //std::lock_guard<std::mutex> lg(mutex);
-    // TODO: Use the path_planner to find a path from start to goal.
-
-    // TODO: Declare a std::lock_guard with the mutex to protect access to the 
-    //       paths queue.
-
-    // TODO: If the path is empty, release the semaphore and return.
     if (path.empty()) {
         sem.release();
         return;
     }
-    
-    {
-    std::lock_guard<std::mutex> lg(mutex);
 
-    paths.push(std::move(path));
+    {
+        std::lock_guard<std::mutex> lg(mutex);
+        paths.push(std::move(path));
     }
+
     sem.release();
+    //std::cerr << "Worker done" << std::endl;
 
     // TODO: Push the path to the paths queue and release the semaphore.
 }
@@ -67,11 +65,13 @@ void multithread_path_plan(std::vector<std::pair<int16_t, int16_t>>& start,
                            PathPlanner& path_planner) {
     size_t num_plans = start.size();
     size_t num_threads = std::thread::hardware_concurrency();
-    ThreadPool pool(num_threads);
 
     std::mutex mutex;
     std::counting_semaphore<255> sem(0);
     std::queue<std::vector<Node>> paths;
+
+    ThreadPool pool(num_threads);
+
 
     // Enqueue a task for each start and goal coordinate pair
     for (size_t i = 0; i < num_plans; ++i) {
