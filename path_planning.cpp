@@ -39,7 +39,7 @@ void path_planner_worker_thread(PathPlanner &path_planner,
                                     
     std::vector<Node> path = path_planner.find_path(start_x, start_y, goal_x, goal_y);
 
-    std::lock_guard<std::mutex> lock(mutex);
+    //std::lock_guard<std::mutex> lg(mutex);
     // TODO: Use the path_planner to find a path from start to goal.
 
     // TODO: Declare a std::lock_guard with the mutex to protect access to the 
@@ -50,8 +50,12 @@ void path_planner_worker_thread(PathPlanner &path_planner,
         sem.release();
         return;
     }
+    
+    {
+    std::lock_guard<std::mutex> lg(mutex);
 
     paths.push(std::move(path));
+    }
     sem.release();
 
     // TODO: Push the path to the paths queue and release the semaphore.
@@ -97,7 +101,7 @@ void multithread_path_plan(std::vector<std::pair<int16_t, int16_t>>& start,
             
             // TODO: If the paths queue is empty, continue to the next 
             //       iteration.
-            if (path.empty()) {
+            if (paths.empty()) {
                 continue;
             }
 
