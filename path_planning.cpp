@@ -36,13 +36,23 @@ void path_planner_worker_thread(PathPlanner &path_planner,
                                 std::queue<std::vector<Node>> &paths,
                                 std::mutex &mutex,
                                 std::counting_semaphore<255> &sem) {
-    std::vector<Node> path;
+                                    
+    std::vector<Node> path = path_planner.find_path(start_x, start_y, goal_x, goal_y);
+
+    std::lock_guard<std::mutex> lock(mutex);
     // TODO: Use the path_planner to find a path from start to goal.
 
     // TODO: Declare a std::lock_guard with the mutex to protect access to the 
     //       paths queue.
 
     // TODO: If the path is empty, release the semaphore and return.
+    if (path.empty()) {
+        sem.release();
+        return;
+    }
+
+    paths.push(std::move(path));
+    sem.release();
 
     // TODO: Push the path to the paths queue and release the semaphore.
 }
@@ -75,14 +85,24 @@ void multithread_path_plan(std::vector<std::pair<int16_t, int16_t>>& start,
     while (threads_finished < num_plans) {
         // TODO: Acquire the semaphore and inrcrement the threads_finished 
         //       counter.
+        sem.acquire();
+        threads_finished++;
 
         std::vector<Node> path;
         {
             // TODO: Declare a std::lock_guard with the mutex to protect access 
             //       to the paths queue.
+
+            std::lock_guard<std::mutex> lg(mutex);
             
             // TODO: If the paths queue is empty, continue to the next 
             //       iteration.
+            if (path.empty()) {
+                continue;
+            }
+
+            path = std::move(paths.front());
+            paths.pop();
 
             // TODO: Get the path from the front of the queue and pop it.
             // Hint: Use std::move to transfer ownership (this is faster than 
